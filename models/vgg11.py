@@ -115,3 +115,4 @@ class VGG11Encoder(nn.Module):
             return x, features
         return x
         
+VGG11 = VGG11Encoder
