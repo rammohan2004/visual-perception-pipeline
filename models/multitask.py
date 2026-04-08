@@ -46,7 +46,7 @@ class MultiTaskPerceptionModel(nn.Module):
         load_weights(self.localizer, localizer_path)
         load_weights(self.unet, unet_path)
 
-        self.shared_encoder = self.unet.encoder
+        self.shared_encoder = self.classifier.encoder
 
 
     def forward(self, x: torch.Tensor):
