@@ -97,5 +97,5 @@ class OxfordIIITPetDataset(Dataset):
             "image": image, #albumentations transforms includes ToTensorV2
             "class_label": torch.tensor(sample["class_id"], dtype=torch.long),
             "bbox": torch.tensor(formatted_bbox, dtype=torch.float32),
-            "segmentation_mask": torch.tensor(mask, dtype=torch.long)
+            "segmentation_mask": mask.clone().detach().long() if isinstance(mask, torch.Tensor) else torch.tensor(mask, dtype=torch.long)
         }
