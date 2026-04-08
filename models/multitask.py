@@ -3,6 +3,10 @@
 
 import torch
 import torch.nn as nn
+from .classification import VGG11Classifier
+from .localization import VGG11Localizer
+from .segmentation import VGG11UNet
+import os
 
 class MultiTaskPerceptionModel(nn.Module):
     """Shared-backbone multi-task model."""
@@ -18,11 +22,32 @@ class MultiTaskPerceptionModel(nn.Module):
             localizer_path: Path to trained localizer weights.
             unet_path: Path to trained unet weights.
         """
+        super().__init__()
         import gdown
         gdown.download(id="<classifier.pth drive id>", output=classifier_path, quiet=False)
         gdown.download(id="<localizer.pth drive id>", output=localizer_path, quiet=False)
         gdown.download(id="<unet.pth drive id>", output=unet_path, quiet=False)
-        pass
+        
+        self.classifier = VGG11Classifier(num_classes=num_breeds, in_channels=in_channels)
+        self.localizer = VGG11Localizer(in_channels=in_channels)
+        self.unet = VGG11UNet(num_classes=seg_classes, in_channels=in_channels)
+
+        def load_weights(model, path):
+            if os.path.exists(path):
+                checkpoint = torch.load(path, map_location="cpu")
+                if "state_dict" in checkpoint:
+                    model.load_state_dict(checkpoint["state_dict"])
+                else:
+                    model.load_state_dict(checkpoint)
+            else:
+                print(f"Warning: Checkpoint {path} not found.")
+
+        load_weights(self.classifier, classifier_path)
+        load_weights(self.localizer, localizer_path)
+        load_weights(self.unet, unet_path)
+
+        self.shared_encoder = self.unet.encoder
+
 
     def forward(self, x: torch.Tensor):
         """Forward pass for multi-task model.
@@ -35,4 +60,52 @@ class MultiTaskPerceptionModel(nn.Module):
             - 'segmentation': [B, seg_classes, H, W] segmentation logits tensor
         """
         # TODO: Implement forward pass.
-        raise NotImplementedError("Implement MultiTaskPerceptionModel.forward")
+
+        #shared encoder
+        bottleneck, features = self.shared_encoder(x, return_features=True)
+
+        #flatten
+        flattened_bottleneck = torch.flatten(bottleneck, start_dim=1)
+
+        #classification
+        class_out = self.classifier.head(flattened_bottleneck)
+
+        #localization
+        loc_out = self.localizer.head(flattened_bottleneck)
+
+        #segmentation
+        seg_out = bottleneck
+
+        seg_out = self.unet.upconv5(seg_out)
+        seg_out = torch.cat([seg_out, features["block5"]], dim=1)
+        seg_out = self.unet.dec5(seg_out)
+
+        #14 to 28
+        seg_out = self.unet.upconv4(seg_out)
+        seg_out = torch.cat([seg_out, features["block4"]], dim=1)
+        seg_out = self.unet.dec4(seg_out)
+
+        #28 to 56
+        seg_out = self.unet.upconv3(seg_out)
+        seg_out = torch.cat([seg_out, features["block3"]], dim=1)
+        seg_out = self.unet.dec3(seg_out)
+
+        #56 to 112
+        seg_out = self.unet.upconv2(seg_out)
+        seg_out = torch.cat([seg_out, features["block2"]], dim=1)
+        seg_out = self.unet.dec2(seg_out)
+
+        #112 to 224
+        seg_out = self.unet.upconv1(seg_out)
+        seg_out = torch.cat([seg_out, features["block1"]], dim=1)
+        seg_out = self.unet.dec1(seg_out)
+
+        #final segmentation output
+        seg_out = self.unet.final_conv(seg_out)
+
+        #return dict
+        return {
+            'classification': class_out,
+            'localization': loc_out,
+            'segmentation': seg_out
+        }
