@@ -66,10 +66,14 @@ class IoULoss(nn.Module):
         inter_h = torch.clamp(inter_ymax-inter_ymin, min=0)
         inter_area = inter_w *inter_h
 
+        '''
+
         pred_w =torch.clamp(pred_w, min=0)
         pred_h =torch.clamp(pred_h, min=0)
         target_w = torch.clamp(target_w, min=0)
         target_h =torch.clamp(target_h, min=0)
+
+        '''
 
         #area of both boxes
         pred_area = pred_w *pred_h
@@ -82,7 +86,7 @@ class IoULoss(nn.Module):
         iou = inter_area /(union_area + self.eps)
 
         #loss = 1 - IoU
-        loss = 1 - iou
+        loss = 1.0 - iou
 
         if self.reduction == "mean":
             return loss.mean()
