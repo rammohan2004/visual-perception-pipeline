@@ -20,9 +20,7 @@ from models.localization import VGG11Localizer
 from models.segmentation import VGG11UNet
 
 
-# ==========================================
-# Exact Metrics & Losses
-# ==========================================
+'''Exact Metrics & Losses'''
 def dice_loss(pred_logits, target, num_classes=3, eps=1e-6):
     """
     pred_logits: [B, num_classes, H, W] raw logits
@@ -34,18 +32,18 @@ def dice_loss(pred_logits, target, num_classes=3, eps=1e-6):
     pred_prob = torch.softmax(pred_logits, dim=1)
     
     # one-hot encoding target to [B, C, H, W]
-    one_hot = torch.zeros(B, num_classes, H, W, device=target.device)
+    one_hot=torch.zeros(B, num_classes, H, W, device=target.device)
     one_hot.scatter_(1, target.unsqueeze(1).long(), 1)
     
     # computing per-class Dice score
-    probs = pred_prob.view(B, C, -1)
+    probs=pred_prob.view(B, C, -1)
     one_hot = one_hot.view(B, C, -1)
 
-    intersection = torch.sum(probs * one_hot, dim=2)
+    intersection =torch.sum(probs * one_hot, dim=2)
     pred_sum = torch.sum(probs, dim=2)
     target_sum = torch.sum(one_hot, dim=2)
 
-    dice_sc = (2. * intersection + eps) / (pred_sum + target_sum + eps)
+    dice_sc = (2.*intersection+eps) / (pred_sum+ target_sum + eps)
     return 1 - dice_sc.mean()
 
 def dice_score(pred_logits, target, num_classes=3, eps=1e-6):
@@ -71,10 +69,8 @@ def dice_score(pred_logits, target, num_classes=3, eps=1e-6):
     dice_sc = (2. * intersection + eps) / (pred_sum + target_sum + eps)
     return dice_sc.mean()
 
+'''Transforms & Freezing Strategies'''
 
-# ==========================================
-# Transforms & Freezing Strategies
-# ==========================================
 def get_transforms():
     """Returns train and validation albumentations transforms."""
     train_transform = A.Compose([
@@ -110,9 +106,9 @@ def apply_transfer_strategy(model, strategy):
         pass 
 
 
-# ==========================================
-# Main Execution
-# ==========================================
+
+#Main Execution
+
 def main():
     parser = argparse.ArgumentParser(description="Train DA6401 Assignment 2 Models")
     parser.add_argument("--task", type=str, required=True, choices=["classification", "localization", "segmentation"])
@@ -128,10 +124,9 @@ def main():
     wandb.init(project="da6401_assignment_2", name=f"{args.task}_{args.transfer_strategy}_bn{args.use_batchnorm}_drop{args.dropout_p}", config=args)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     train_transform, val_transform = get_transforms()
+
+    '''Dataset + Loader''' 
     
-    # =========================
-    # Dataset + Loader (Fixed Seeded Split)
-    # =========================
     full_dataset = OxfordIIITPetDataset(
         root_dir=args.data_dir,
         split="train",
@@ -141,7 +136,7 @@ def main():
     val_size = int(0.2 * len(full_dataset))
     train_size = len(full_dataset) - val_size
     
-    # Generate exact indices
+    #Generate exact indices
     generator = torch.Generator().manual_seed(42)
     indices = torch.randperm(len(full_dataset), generator=generator).tolist()
     train_indices = indices[:train_size]
@@ -164,9 +159,8 @@ def main():
     train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, num_workers=optimal_workers, pin_memory=use_pin_memory)
     val_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=False, num_workers=optimal_workers, pin_memory=use_pin_memory)
     
-    # =========================
-    # Model & Loss Init
-    # =========================
+    '''Model & Loss Init'''
+
     if args.task == "classification":
         model = VGG11Classifier(num_classes=37, dropout_p=args.dropout_p, use_batchnorm=args.use_batchnorm)
         criterion = nn.CrossEntropyLoss()
@@ -178,7 +172,7 @@ def main():
         iou_loss_mean = IoULoss(reduction="mean")
         iou_loss_none = IoULoss(reduction="none") 
         
-        # Unweighted sum loss
+        #unweighted sum loss
         def criterion(outputs, targets):
             return mse_loss(outputs, targets) + iou_loss_mean(outputs, targets)
             
@@ -188,7 +182,7 @@ def main():
         model = VGG11UNet(num_classes=3, dropout_p=args.dropout_p, use_batchnorm=args.use_batchnorm)
         ce_loss = nn.CrossEntropyLoss()
         
-        # Combined loss
+        #combined loss
         def criterion(outputs, targets):
             return ce_loss(outputs, targets.long()) + dice_loss(outputs, targets)
             
@@ -196,14 +190,13 @@ def main():
 
     model = model.to(device)
 
-    # =========================
-    # Transfer Weights & 0.1x LR logic
-    # =========================
+    '''Transfer Weights & 0.1x LR logic'''
+
     use_differential_lr = False
 
     if args.task in ["localization", "segmentation"]:
         if os.path.exists("checkpoints/classifier.pth"):
-            print("=> Loading pre-trained encoder weights from classifier.pth")
+            print("=>Loading pre-trained encoder weights from classifier.pth")
             checkpoint = torch.load("checkpoints/classifier.pth", map_location=device)
             state = checkpoint.get("state_dict", checkpoint)
             encoder_state = {k.replace("encoder.", ""): v for k, v in state.items() if k.startswith("encoder.")}
@@ -214,44 +207,42 @@ def main():
 
         apply_transfer_strategy(model, args.transfer_strategy)
 
-    # =========================
-    # Optimizer & Scheduler Setup
-    # =========================
+    ''' optimizer & scheduler setup '''
+
     if use_differential_lr and args.transfer_strategy in ["partial", "full"]:
         print("=> Applying 0.1x Learning Rate scaling to unfrozen encoder parameters.")
-        encoder_params = filter(lambda p: p.requires_grad, model.encoder.parameters())
-        head_params = [p for n, p in model.named_parameters() if not n.startswith('encoder.') and p.requires_grad]
+        encoder_params =filter(lambda p: p.requires_grad, model.encoder.parameters())
+        head_params =[p for n, p in model.named_parameters() if not n.startswith('encoder.') and p.requires_grad]
         
-        optimizer = optim.Adam([
+        optimizer =optim.Adam([
             {"params": encoder_params, "lr": args.lr * 0.1},
             {"params": head_params, "lr": args.lr}
         ])
     else:
-        trainable_params = filter(lambda p: p.requires_grad, model.parameters())
-        optimizer = optim.Adam(trainable_params, lr=args.lr)
+        trainable_params= filter(lambda p: p.requires_grad, model.parameters())
+        optimizer =optim.Adam(trainable_params, lr=args.lr)
     
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=3, factor=0.5)
+    scheduler =torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=3, factor=0.5)
     best_val_metric = 0.0
 
-    # =========================
-    # Training Loop
-    # =========================
+    '''Training Loop'''
+    
     for epoch in range(args.epochs):
         model.train()
         running_loss = 0.0
         train_metric_accum = 0.0
-        all_train_preds, all_train_labels = [], []
+        all_train_preds,all_train_labels = [], []
         
-        # Dictionary Unpacking
+        #Dictionary unpacking
         for batch in train_loader:
             images = batch["image"].to(device)
             
-            # Target routing with strict clamping for masks
+            #Target routing with strict clamping for masks
             if args.task == "classification":
-                targets = batch["class_label"].to(device)
+                targets =batch["class_label"].to(device)
             elif args.task == "localization":
                 targets = batch["bbox"].to(device).float()
-            elif args.task == "segmentation":
+            elif args.task =="segmentation":
                 targets = torch.clamp(batch["segmentation_mask"].to(device).long(), min=0, max=2)
             
             optimizer.zero_grad()
@@ -261,76 +252,74 @@ def main():
             loss.backward()
             optimizer.step()
             
-            running_loss += loss.item()
+            running_loss +=loss.item()
             
-            # Metric Accumulation
+            #Metric accumulation
             with torch.no_grad():
-                if args.task == "classification":
-                    preds = torch.argmax(outputs, dim=1)
+                if args.task =="classification":
+                    preds =torch.argmax(outputs, dim=1)
                     all_train_preds.extend(preds.cpu().numpy())
                     all_train_labels.extend(targets.cpu().numpy())
                 elif args.task == "localization":
                     per_sample_iou = 1.0 - iou_loss_none(outputs.detach(), targets) 
                     train_metric_accum += per_sample_iou.mean().item()
-                elif args.task == "segmentation":
+                elif args.task =="segmentation":
                     train_metric_accum += dice_score(outputs.detach(), targets).item()
             
         avg_train_loss = running_loss / max(len(train_loader), 1)
         
-        if args.task == "classification":
+        if args.task =="classification":
             train_metric = f1_score(all_train_labels, all_train_preds, average='macro')
         else:
             train_metric = train_metric_accum / max(len(train_loader), 1)
 
-        # =========================
-        # Validation Loop
-        # =========================
+        '''Validation loop'''
         model.eval()
         val_loss = 0.0
         val_metric_accum = 0.0
         all_val_preds, all_val_labels = [], []
 
         with torch.no_grad():
-            # Dictionary Unpacking
+            #Dictionary unpacking
             for batch in val_loader:
-                images = batch["image"].to(device)
+                images =batch["image"].to(device)
 
-                # Target routing with strict clamping for masks
-                if args.task == "classification":
-                    targets = batch["class_label"].to(device)
-                elif args.task == "localization":
-                    targets = batch["bbox"].to(device).float()
-                elif args.task == "segmentation":
+                #Target routing with strict clamping for masks
+                if args.task =="classification":
+                    targets =batch["class_label"].to(device)
+                elif args.task== "localization":
+                    targets =batch["bbox"].to(device).float()
+                elif args.task== "segmentation":
                     targets = torch.clamp(batch["segmentation_mask"].to(device).long(), min=0, max=2)
 
-                outputs = model(images)
-                loss = criterion(outputs, targets)
-                val_loss += loss.item()
+                outputs =model(images)
+                loss= criterion(outputs, targets)
+                val_loss +=loss.item()
 
                 if args.task == "classification":
-                    preds = torch.argmax(outputs, dim=1)
+                    preds =torch.argmax(outputs, dim=1)
                     all_val_preds.extend(preds.cpu().numpy())
                     all_val_labels.extend(targets.cpu().numpy())
                 elif args.task == "localization":
                     per_sample_iou = 1.0 - iou_loss_none(outputs, targets) 
-                    val_metric_accum += per_sample_iou.mean().item()
+                    val_metric_accum +=per_sample_iou.mean().item()
                 elif args.task == "segmentation":
-                    val_metric_accum += dice_score(outputs, targets).item()
+                    val_metric_accum+= dice_score(outputs, targets).item()
 
         avg_val_loss = val_loss / max(len(val_loader), 1)
         
         if args.task == "classification":
-            val_metric = f1_score(all_val_labels, all_val_preds, average='macro')
+            val_metric =f1_score(all_val_labels, all_val_preds, average='macro')
         else:
             val_metric = val_metric_accum / max(len(val_loader), 1)
 
         scheduler.step(val_metric)
 
-        metric_name = "F1" if args.task == "classification" else ("IoU" if args.task == "localization" else "Dice")
+        metric_name ="F1" if args.task =="classification" else ("IoU" if args.task == "localization" else "Dice")
         print(f"Epoch [{epoch+1}/{args.epochs}] - Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f} | Train {metric_name}: {train_metric:.4f}, Val {metric_name}: {val_metric:.4f}")
 
-        # Checkpoint Saving Logic
-        if val_metric > best_val_metric:
+        #Checkpoint saving logic
+        if val_metric >best_val_metric:
             best_val_metric = val_metric
             os.makedirs("checkpoints", exist_ok=True)
             checkpoint_payload = {
