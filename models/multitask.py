@@ -71,7 +71,7 @@ class MultiTaskPerceptionModel(nn.Module):
         class_out = self.classifier.head(flattened_bottleneck)
 
         #localization
-        loc_out = self.localizer.head(flattened_bottleneck)
+        loc_out = self.localizer.head(flattened_bottleneck)*224.0
 
         #segmentation
         seg_out = bottleneck
