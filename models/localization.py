@@ -21,15 +21,16 @@ class VGG11Localizer(nn.Module):
         self.encoder = VGG11Encoder(in_channels=in_channels, use_batchnorm=use_batchnorm)
 
         self.head = nn.Sequential(
-            nn.Linear(512 * 7 * 7, 4096),
+            nn.Linear(25088, 4096),
             nn.ReLU(inplace=True),
             CustomDropout(p=dropout_p),
 
-            nn.Linear(4096, 4096),
+            nn.Linear(4096, 1024),
             nn.ReLU(inplace=True),
             CustomDropout(p=dropout_p),
 
-            nn.Linear(4096, 4), 
+            nn.Linear(1024, 4), 
+            nn.Sigmoid()
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -45,5 +46,6 @@ class VGG11Localizer(nn.Module):
         x = self.encoder(x)
         x = torch.flatten(x, start_dim=1)
         x = self.head(x)
+        x = x*224
         return x
         
