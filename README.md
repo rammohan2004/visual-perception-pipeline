@@ -9,149 +9,83 @@ You can find the complete project on [GitHub](https://github.com/rammohan2004/vi
 
 
 
-# DA6401 Assignment-2 Skeleton Guide
+# Complete Visual Perception Pipeline
 
-This repository is an instructional skeleton for building the complete visual perception pipeline on Oxford-IIIT Pet.
+This repository contains a unified deep learning pipeline built with PyTorch that performs simultaneous image classification, bounding box localization, and semantic segmentation. It was developed and trained using the Oxford-IIIT Pet Dataset.
 
+## Project Overview
 
-### ADDITIONAL INSTRUCTIONS FOR ASSIGNMENT2:
-- Ensure VGG11 is implemented according to the official paper(https://arxiv.org/abs/1409.1556). The only difference being injecting BatchNorm and CustomDropout layers is your design choice.
-- Train all the networks on normalized images as input (as the test set given by autograder will be normalized images).
-- The output of Localization model = [x_center, y_center, width, height] all these numbers are with respect to image coordinates, in pixel space (not normalized)
-- Train the object localization network with the following loss function: MSE + custom_IOU_loss.
-- Make sure the custom_IOU loss is in range: [0,1]
-- In the custom IOU loss, you have to implement all the two reduction types: ["mean", "sum"] and the default reduction type should be "mean". You may include any other reduction type as well, which will help your network learn better.
-- multitask.py shd load the saved checkpoints (classifier.pth, localizer.pth, unet.pth), initialize the shared backbone and heads with these trained weights and do prediction.
-- Keep paths as relative paths for loading in multitask.py
-- Assume input image size is fixed according to vgg11 paper(can be hardcoded need not pass as args)
-- Stick to the arguments of the functions and classes given in the github repo, if you include any additional arguments make sure they always have some default value.
-- Do not import any other python packages apart from the ones mentioned in assignment pdf, if you do so the autograder will instantly crash and your submission will not be evaluated.
-- The following classes will be used by autograder: 
-    ```
-        from models.vgg11 import VGG11
-        from models.layers import CustomDropout
-        from losses.iou_loss import IoULoss
-        from multitask import MultiTaskPerceptionModel
-    ```
-- The submission link for this assignment will be available by Saturday(04/04/2026) on gradescope
+The goal of this project is to explore multi-task learning by sharing a single convolutional backbone (VGG11) across three distinct computer vision tasks. The project evaluates the architectural impact of Batch Normalization, Custom Dropout placement, and transfer learning strategies (freezing vs. fine-tuning) to mitigate task interference.
 
+### Core Tasks
+1. **Classification:** Identifies the specific breed of the pet (37 classes) using a linear classification head and Cross-Entropy Loss.
+2. **Localization:** Predicts the bounding box around the animal's head using a regression head trained with a combination of Mean Squared Error (MSE) and a custom Intersection over Union (IoU) Loss.
+3. **Segmentation:** Generates a pixel-wise trimap mask (foreground, background, boundary) using a U-Net style decoder that utilizes skip connections from the shared VGG11 encoder, trained with a combined Cross-Entropy and Dice Loss.
 
+## Dataset
 
+The model utilizes the **Oxford-IIIT Pet Dataset**, which contains:
+- 37 category pet images with variations in scale, pose, and lighting.
+- Ground truth bounding box annotations (XML format).
+- Trimap segmentation masks (PNG format).
 
+Data augmentation is handled via the albumentations library, applying random horizontal flips, color jitter, and slight rotations during the training phase.
 
-### GENERAL INSTRUCTIONS:
-- From this assignment onwards, if we find any wandb report which is private/inaccessible while grading, there wont be any second chance, that submission will be marked 0 for wandb marks.
-- The entireity of plots presented in the wandb report should be interactive and logged in the wandb project. Any screenshot or images of plots will straightly be marked 0 for that question.
-- Gradescope offers an option to activate whichever submission you want to, and that submission will be used for evaluation. Under any circumstances, no requests to be raised to TAs to activate any of your prior submissions. It is the student's responsibility to do so(if required) before submission deadline.
-- Assignment2 discussion forum has been opened on moodle for any doubt clarification/discussion.   
+## Repository Structure
 
-
-
-# Assignment 2 – Submission Guidelines
-
-Follow the steps below carefully:
-
----
-
-## Step 1 – Google Drive Setup
-
-Create a new folder in your Google Drive and upload all 3 model checkpoints to it:
-
-- `classifier.pth`
-- `localizer.pth`
-- `unet.pth`
-
----
-
-## Step 2 – Get Drive IDs
-
-For each `.pth` file:
-
-1. Click the three dots (**More actions**) next to the file
-2. Click **Share → Share**
-3. Set access to **Anyone with the link**
-4. Copy the link and extract the ID
-
-**Example:**
-Link → https://drive.google.com/file/d/1t2EgeJ3TaYFSBQoC9o0ojd8Nn52XzV0i/view?usp=sharing
-ID   → 1t2EgeJ3TaYFSBQoC9o0ojd8Nn52XzV0i
-
----
-
-## Step 3 – Update Your Code
-
-Paste these 4 lines at the **start** of the `init()` function inside `MultiTaskPerceptionModel`:
-```python
-import gdown
-gdown.download(id="<classifier.pth drive id>", output=classifier_path, quiet=False)
-gdown.download(id="<localizer.pth drive id>", output=localizer_path, quiet=False)
-gdown.download(id="<unet.pth drive id>", output=unet_path, quiet=False)
-```
-
-Replace each `<...drive id>` with the actual IDs from Step 2.
-
----
-
-## Step 4 – Clean Up Locally
-
-Delete all 3 `.pth` files from your local `/checkpoints` folder.
-
----
-
-## Step 5 – Push to GitHub
-
-Push the current project to GitHub. Make sure **no `.pth` files** are included.
-
----
-
-## Step 6 – Verify Project Structure
-
-Your final project should look like this:
-
-```
-.
-├── checkpoints
-│   └── checkpoints.md
-├── data
-│   └── pets_dataset.py
-├── inference.py
-├── losses
-│   ├── __init__.py
-│   └── iou_loss.py
-├── models
-│   ├── classification.py
-│   ├── __init__.py
-│   ├── layers.py
-│   ├── localization.py
-│   ├── multitask.py
-│   ├── segmentation.py
-│   └── vgg11.py
-├── README.md
-├── requirements.txt
-└── train.py
-```
----
-
-## Step 7 – README
-
-Make sure your README includes:
-
-- Public **WandB report** link
-- **GitHub repo** link
-
----
-
-## Step 8 – Submit
-
-Zip the project and submit on **Gradescope**.
-
-> ⚠️ **Do NOT delete** the above created Drive folder till Assignment 2 marks are released.
+    ├── data/
+    │   └── pets_dataset.py       # Custom PyTorch Dataset loader and XML parser
+    ├── losses/
+    │   └── iou_loss.py           # Custom IoU loss implementation for bounding boxes
+    ├── models/
+    │   ├── layers.py             # Custom Dropout implementations
+    │   ├── vgg11.py              # Shared VGG11 Encoder with conditional Batch Normalization
+    │   ├── classification.py     # Classification head
+    │   ├── localization.py       # Bounding box regression head
+    │   ├── segmentation.py       # U-Net style decoder
+    │   └── multitask.py          # Unified multi-task inference pipeline
+    ├── train.py                  # Main training entrypoint with W&B logging
+    └── README.md
 
 
-# Contact
+## Requirements
 
-For questions or issues, please contact the teaching staff or post on the course forum.
+- Python 3.8+
+- PyTorch
+- torchvision
+- albumentations
+- Weights & Biases (wandb)
+- scikit-learn
+- Pillow
+- gdown
 
----
+## Usage
 
-Good luck with your implementation!
+### Training Isolated Models
+
+You can train individual task models from scratch or using specific transfer learning strategies via the command line interface in train.py.
+
+**1. Train the Classifier:**
+    python train.py --task classification --epochs 20 --batch_size 32 --lr 1e-4 --use_batchnorm
+
+**2. Train the Localizer (Strict Freeze Strategy):**
+    python train.py --task localization --transfer_strategy strict --use_batchnorm
+
+**3. Train the Segmentation U-Net:**
+    python train.py --task segmentation --transfer_strategy strict --use_batchnorm
+
+
+### Multi-Task Inference
+Once the individual weights (classifier.pth, localizer.pth, unet.pth) are generated, the MultiTaskPerceptionModel in multitask.py combines them. It forces all three task heads to utilize the frozen classification backbone to output simultaneous predictions.
+
+## Key Architectural Insights
+
+Through comprehensive W&B logging and experimentation, several key conclusions were drawn regarding multi-task architectures:
+
+- **Mitigating Task Interference:** Utilizing a "Strict Freeze" strategy for the shared backbone proved highly effective. When attempting "Full Fine-Tuning", the tasks experienced severe interference. The localization and segmentation heads altered the shared weights, destroying the original classification features. Freezing the classification backbone forced all tasks to adapt to a stable, shared representation.
+- **Batch Normalization:** Implementing Batch Normalization inside the shared encoder was critical. It successfully mitigated internal covariate shift, allowing the model to utilize a higher maximum stable learning rate without dying (outputting pure zeros) during early epochs.
+- **Loss Formulation for Class Imbalance:** Relying solely on Cross-Entropy loss for segmentation resulted in artificially high accuracy due to background pixel dominance. Implementing a custom Dice Loss was essential to force the network to accurately learn the specific spatial boundaries of the foreground object.
+
+## Acknowledgements
+
+Developed as part of the DA6401 coursework. Logging and metric tracking powered by Weights & Biases.
