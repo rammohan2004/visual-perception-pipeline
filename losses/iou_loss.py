@@ -31,41 +31,39 @@ class IoULoss(nn.Module):
             target_boxes: [B, 4] target boxes in (x_center, y_center, width, height) format."""
         # TODO: implement IoU loss.
 
-         #extracting cx cy w h from target_boxes
+         #extracting cx cy w h from target_boxes and converting target_boxes to (xmin, ymin, xmax, ymax)
         target_cx = target_boxes[:, 0]
-        target_cy =target_boxes[:, 1]
         target_w  =target_boxes[:,2]
-        target_h  = target_boxes[:,3]
-
-        #converting target_boxes to (xmin, ymin, xmax, ymax)
         target_xmin = target_cx - target_w/2
-        target_ymin = target_cy - target_h/2
         target_xmax =target_cx + target_w/ 2
+
+        target_cy =target_boxes[:, 1]
+        target_h  = target_boxes[:,3]
+        target_ymin = target_cy - target_h/2
         target_ymax = target_cy + target_h / 2
 
-        #extracting cx cy w h from pred_boxes
+        #extracting cx cy w h from pred_boxes and converting pred_boxes to (xmin, ymin, xmax, ymax)
         pred_cx = pred_boxes[:, 0]
-        pred_cy = pred_boxes[:, 1]
         pred_w  = pred_boxes[:, 2]
+        pred_xmin =pred_cx -pred_w /2
+        pred_xmax = pred_cx + pred_w/2
+
+        pred_cy = pred_boxes[:, 1]
         pred_h  = pred_boxes[:, 3]
-
-
-        #converting pred_boxes to (xmin, ymin, xmax, ymax)
-        pred_xmin =pred_cx -pred_w / 2
         pred_ymin = pred_cy -pred_h / 2
-        pred_xmax = pred_cx + pred_w/ 2
         pred_ymax =pred_cy + pred_h / 2
         
 
         #intersection rectangle
         inter_xmin =torch.max(pred_xmin, target_xmin)
-        inter_ymin = torch.max(pred_ymin,target_ymin)
         inter_xmax = torch.min(pred_xmax,target_xmax)
+        inter_w = torch.clamp(inter_xmax-inter_xmin, min=0)
+
+        inter_ymin = torch.max(pred_ymin,target_ymin)
         inter_ymax= torch.min(pred_ymax,target_ymax)
+        inter_h = torch.clamp(inter_ymax-inter_ymin, min=0)
 
         #intersection area
-        inter_w = torch.clamp(inter_xmax-inter_xmin, min=0)
-        inter_h = torch.clamp(inter_ymax-inter_ymin, min=0)
         inter_area = inter_w *inter_h
 
         '''

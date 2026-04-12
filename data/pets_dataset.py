@@ -22,13 +22,14 @@ class OxfordIIITPetDataset(Dataset):
         self.split = split
         self.transforms = transforms
         
-        self.images_dir = os.path.join(root_dir, "images")
-        self.masks_dir = os.path.join(root_dir, "annotations", "trimaps")
-        self.xmls_dir = os.path.join(root_dir, "annotations", "xmls")
-        
-        split_file = "trainval.txt" if split == "train" else "test.txt"
-        split_path = os.path.join(root_dir, "annotations", split_file)
-        
+        self.images_dir=os.path.join(root_dir, "images")
+        self.masks_dir=os.path.join(root_dir, "annotations", "trimaps")
+        self.xmls_dir=os.path.join(root_dir, "annotations", "xmls")
+        if split == "train":
+            split_file="trainval.txt" 
+        else:
+            split_file = "test.txt"
+        split_path=os.path.join(root_dir, "annotations", split_file)
         self.samples = []
         
         with open(split_path, 'r') as f:
