@@ -1,6 +1,6 @@
 ## Wandb Report Link
 You can find the Report on [WandB Report](
-https://wandb.ai/cs25m017-indian-institute-of-technology-madras/da6401_assignment_2/reports/Untitled-Report--VmlldzoxNjQ1ODI0OA?accessToken=kus07g5zxc5ohe1fhxnq3sgmk563pumcfdxworahbxadymv856p71f6pompinoik)
+https://wandb.ai/cs25m017-indian-institute-of-technology-madras/da6401_assignment_2/reports/DA6401-Assignment2-CS25M017--VmlldzoxNjQ1ODI0OA?accessToken=kus07g5zxc5ohe1fhxnq3sgmk563pumcfdxworahbxadymv856p71f6pompinoik)
 
 ## GitHub Repository
 You can find the complete project on [GitHub](https://github.com/rammohan2004/visual-perception-pipeline).
