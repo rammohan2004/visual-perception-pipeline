@@ -31,29 +31,31 @@ class IoULoss(nn.Module):
             target_boxes: [B, 4] target boxes in (x_center, y_center, width, height) format."""
         # TODO: implement IoU loss.
 
-        #extracting cx cy w h from pred_boxes
-        pred_cx = pred_boxes[:, 0]
-        pred_cy = pred_boxes[:, 1]
-        pred_w  = pred_boxes[:, 2]
-        pred_h  = pred_boxes[:, 3]
-
-        #extracting cx cy w h from target_boxes
+         #extracting cx cy w h from target_boxes
         target_cx = target_boxes[:, 0]
         target_cy =target_boxes[:, 1]
         target_w  =target_boxes[:,2]
         target_h  = target_boxes[:,3]
-
-        #converting pred_boxes to (xmin, ymin, xmax, ymax)
-        pred_xmin =pred_cx -pred_w / 2
-        pred_ymin = pred_cy -pred_h / 2
-        pred_xmax = pred_cx + pred_w/ 2
-        pred_ymax =pred_cy + pred_h / 2
 
         #converting target_boxes to (xmin, ymin, xmax, ymax)
         target_xmin = target_cx - target_w/2
         target_ymin = target_cy - target_h/2
         target_xmax =target_cx + target_w/ 2
         target_ymax = target_cy + target_h / 2
+
+        #extracting cx cy w h from pred_boxes
+        pred_cx = pred_boxes[:, 0]
+        pred_cy = pred_boxes[:, 1]
+        pred_w  = pred_boxes[:, 2]
+        pred_h  = pred_boxes[:, 3]
+
+
+        #converting pred_boxes to (xmin, ymin, xmax, ymax)
+        pred_xmin =pred_cx -pred_w / 2
+        pred_ymin = pred_cy -pred_h / 2
+        pred_xmax = pred_cx + pred_w/ 2
+        pred_ymax =pred_cy + pred_h / 2
+        
 
         #intersection rectangle
         inter_xmin =torch.max(pred_xmin, target_xmin)
