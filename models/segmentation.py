@@ -34,7 +34,7 @@ class VGG11UNet(nn.Module):
         self.upconv2 = nn.ConvTranspose2d(128, 128, kernel_size=2, stride=2)
         self.upconv1 = nn.ConvTranspose2d(64, 64, kernel_size=2, stride=2)
 
-        # dec5: 512 (up) + 512 (skip) = 1024 → 512
+        # dec5: 512 (up) + 512 (skip) = 1024 to 512
         self.dec5 = nn.Sequential(
             nn.Conv2d(1024, 512, kernel_size=3, padding=1),
             bn(512),
@@ -47,7 +47,7 @@ class VGG11UNet(nn.Module):
             CustomDropout(p=dropout_p)
         )
 
-        # dec4: 512 (up) + 512 (skip) = 1024 → 256
+        # dec4: 512 (up) + 512 (skip) = 1024 to 256
         self.dec4 = nn.Sequential(
             nn.Conv2d(1024, 256, kernel_size=3, padding=1),
             bn(256),
@@ -60,7 +60,7 @@ class VGG11UNet(nn.Module):
             CustomDropout(p=dropout_p)
         )
 
-        # dec3: 256 (up) + 256 (skip) = 512 → 128
+        # dec3: 256 (up) + 256 (skip) = 512 to 128
         self.dec3 = nn.Sequential(
             nn.Conv2d(512, 128, kernel_size=3, padding=1),
             bn(128),
@@ -73,7 +73,7 @@ class VGG11UNet(nn.Module):
             CustomDropout(p=dropout_p)
         )
 
-        # dec2: 128 (up) + 128 (skip) = 256 → 64
+        # dec2: 128 (up) + 128 (skip) = 256 to 64
         self.dec2 = nn.Sequential(
             nn.Conv2d(256, 64, kernel_size=3, padding=1),
             bn(64),
@@ -81,7 +81,7 @@ class VGG11UNet(nn.Module):
             CustomDropout(p=dropout_p)
         )
 
-        # dec1: 64 (up) + 64 (skip) = 128 → 32
+        # dec1: 64 (up) + 64 (skip) = 128 to 32
         self.dec1 = nn.Sequential(
             nn.Conv2d(128, 32, kernel_size=3, padding=1),
             bn(32),
